@@ -1,9 +1,9 @@
-# Define base paths
-root_base = "C:/users/image/code_projects/"
-dev_base = root_base + "_DEV/"
-wamp_base = "D:/wmap64/www/Project/"
-dev_cache = dev_base + "_cache/"
-wamp_cache = wamp_base + "_cache/"
+# Define base path constants
+ROOT_BASE = "C:/users/image/code_projects/"
+DEV_BASE = ROOT_BASE + "_DEV/"
+WAMP_BASE = "D:/wmap64/www/Project/"
+DEV_CACHE = DEV_BASE + "_cache/"
+WAMP_CACHE = WAMP_BASE + "_cache/"
 
 
 def parse_args():
@@ -20,10 +20,10 @@ def parse_args():
 def check_dirs(name):
     import os
 
-    dev_path = dev_base + name + "/"
-    wamp_path = wamp_base + name + "/"
-    dCache = dev_cache + name + "/"
-    wCache = wamp_cache + name + "/"
+    dev_path = DEV_BASE + name + "/"
+    wamp_path = WAMP_BASE + name + "/"
+    dCache = DEV_CACHE + name + "/"
+    wCache = WAMP_CACHE + name + "/"
 
     for base in [dev_path, wamp_path, dCache, wCache]:
         if not os.path.exists(base):
@@ -35,11 +35,11 @@ def cache_files(name):
     import os
     import shutil
 
-    dev_path = dev_base + name + "/"
-    wamp_path = wamp_base + name + "/"
-    
-    dCache = dev_cache + name + "/"
-    wCache = wamp_cache + name + "/"
+    dev_path = DEV_BASE + name + "/"
+    wamp_path = WAMP_BASE + name + "/"
+
+    dCache = DEV_CACHE + name + "/"
+    wCache = WAMP_CACHE + name + "/"
 
     if not os.path.exists(dCache):
         print(f"Cache path '{dCache}' does not exist.")
@@ -76,9 +76,9 @@ def deploy_files(name):
     import os
     import shutil
 
-    dev_path = dev_base + name + "/"
-    wamp_path = wamp_base + name + "/"
-    build_path = root_base + name + "/build/client/"
+    dev_path = DEV_BASE + name + "/"
+    wamp_path = WAMP_BASE + name + "/"
+    build_path = ROOT_BASE + name + "/build/client/"
 
     if not os.path.exists(dev_path):
         print(f"Development path '{dev_path}' does not exist.")
