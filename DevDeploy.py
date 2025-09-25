@@ -58,8 +58,9 @@ def cache_files(name):
         try:
             shutil.move(src, dest)
         except Exception as e:
-            print(f"destination present, using full path")
-            shutil.move(src, os.path.join(dCache, item))
+            print(f"destination present, dumping contents and trying again...")
+            shutil.rmtree(dest)
+            shutil.move(src, dest)
 
     # Copy files from wamp to cache
     for item in os.listdir(wamp_path):
@@ -68,8 +69,9 @@ def cache_files(name):
         try:
             shutil.move(src, dest)
         except Exception as e:
-            print(f"destination present, using full path")
-            shutil.move(src, os.path.join(wCache, item))
+            print(f"destination present, dumping contents and trying again...")
+            shutil.rmtree(dest)
+            shutil.move(src, dest)
 
     print(f"Project '{name}' cached successfully.")
 
