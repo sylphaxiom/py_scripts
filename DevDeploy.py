@@ -55,19 +55,13 @@ def cache_files(name):
     for item in os.listdir(dev_path):
         src = os.path.join(dev_path, item)
         dest = os.path.join(dCache, item)
-        if os.path.isdir(src):
-            shutil.copytree(src, dest, dirs_exist_ok=True)
-        else:
-            shutil.copy2(src, dest)
+        shutil.move(src, dest)
 
     # Copy files from wamp to cache
     for item in os.listdir(wamp_path):
         src = os.path.join(wamp_path, item)
         dest = os.path.join(wCache, item)
-        if os.path.isdir(src):
-            shutil.copytree(src, dest, dirs_exist_ok=True)
-        else:
-            shutil.copy2(src, dest)
+        shutil.move(src, dest)
 
     print(f"Project '{name}' cached successfully.")
 
