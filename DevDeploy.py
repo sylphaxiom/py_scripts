@@ -58,7 +58,7 @@ def cache_files(name):
         try:
             shutil.move(src, dest)
         except Exception as e:
-            print(f"destination present, dumping contents and trying again...")
+            print(f"Destination '{dest}' present, dumping contents and trying again...")
             shutil.rmtree(dest)
             shutil.move(src, dest)
 
@@ -69,7 +69,7 @@ def cache_files(name):
         try:
             shutil.move(src, dest)
         except Exception as e:
-            print(f"destination present, dumping contents and trying again...")
+            print(f"Destination '{dest}' present, dumping contents and trying again...")
             shutil.rmtree(dest)
             shutil.move(src, dest)
 
