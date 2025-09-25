@@ -55,13 +55,21 @@ def cache_files(name):
     for item in os.listdir(dev_path):
         src = os.path.join(dev_path, item)
         dest = os.path.join(dCache, item)
-        shutil.move(src, dest)
+        try:
+            shutil.move(src, dest)
+        except Exception as e:
+            print(f"destination present, using full path")
+            shutil.move(src, os.path.join(dCache, item))
 
     # Copy files from wamp to cache
     for item in os.listdir(wamp_path):
         src = os.path.join(wamp_path, item)
         dest = os.path.join(wCache, item)
-        shutil.move(src, dest)
+        try:
+            shutil.move(src, dest)
+        except Exception as e:
+            print(f"destination present, using full path")
+            shutil.move(src, os.path.join(wCache, item))
 
     print(f"Project '{name}' cached successfully.")
 
