@@ -4,6 +4,7 @@ ROOT_BASE = "C:/users/image/code_projects/"
 DEV_BASE = ROOT_BASE + "_DEV/"
 PROD_BASE = ROOT_BASE + "_PROD/"
 WAMP_BASE = "D:/wmap64/www/Project/"
+PROD_REMOTE = "/home2/xikihgmy/public_html/"
 
 DEV_CACHE = DEV_BASE + "_cache/"
 WAMP_CACHE = WAMP_BASE + "_cache/"
@@ -143,10 +144,42 @@ def deploy_files(name, PROD=False):
 
     print(f"Project '{name}' deployed successfully.")
 
+def ftp_prod(name):
+    import paramiko as Ftp
+    import os
+
+    KEY_PATH = "C:/Users/image/.ssh/home_ssh"
+    prod_path = PROD_BASE + name
+
+    # Build connection
+    client = Ftp.SSHClient()
+    client.set_missing_host_key_policy(Ftp.AutoAddPolicy())
+    client.connect(
+        hostname="50.6.18.187",
+        username="xikihgmy",
+        port=22,
+        key_filename=KEY_PATH,
+        passphrase="rabbit",
+        look_for_keys=False
+        )
+    sftp = client.open_sftp()
+    dir = os.scandir( prod_path )
+    for file in dir:
+        if file.is_file():
+            sftp.put( prod_path + file.name, PROD_REMOTE + file.name )
+            print( file.name + " moved to production successfully" )
+        if file.is_dir():
+            subdir = os.scandir( prod_path + file.name )
+            for subfile in subdir:
+                sftp.put( prod_path + file.name + "/" + subfile.name, PROD_REMOTE + file.name + "/" + subfile.name )
+                print( subfile.name + " moved to production subdirectory " + file.name + " successfully" )
+    
 if __name__ == "__main__":
     [project_name, PROD] = parse_args()
     if check_dirs(project_name):
         cache_files(project_name, PROD=PROD)
         deploy_files(project_name, PROD=PROD)
+        if (PROD):
+            ftp_prod(project_name)
     else:
         print("Directory check failed. Deployment aborted.")
