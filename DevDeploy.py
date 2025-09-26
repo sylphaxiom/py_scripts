@@ -166,12 +166,12 @@ def ftp_prod(name):
     dir = os.scandir( prod_path )
     for file in dir:
         if file.is_file():
-            sftp.put( prod_path + file.name, PROD_REMOTE + file.name )
+            sftp.put( prod_path + "/" + file.name, PROD_REMOTE + file.name )
             print( file.name + " moved to production successfully" )
         if file.is_dir():
-            subdir = os.scandir( prod_path + file.name )
+            subdir = os.scandir( prod_path + "/" + file.name )
             for subfile in subdir:
-                sftp.put( prod_path + file.name + "/" + subfile.name, PROD_REMOTE + file.name + "/" + subfile.name )
+                sftp.put( prod_path + "/" + file.name + "/" + subfile.name, PROD_REMOTE + file.name + "/" + subfile.name )
                 print( subfile.name + " moved to production subdirectory " + file.name + " successfully" )
     
 if __name__ == "__main__":
