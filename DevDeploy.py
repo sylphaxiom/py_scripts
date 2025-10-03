@@ -5,10 +5,12 @@ DEV_BASE = ROOT_BASE + "_DEV/"
 PROD_BASE = ROOT_BASE + "_PROD/"
 WAMP_BASE = "D:/wmap64/www/Project/"
 PROD_REMOTE = "/home2/xikihgmy/public_html/"
-
+API_REMOTE = "/home2/xikihgmy/api/v1/"
+API_BASE = ROOT_BASE + "_API/"
 DEV_CACHE = DEV_BASE + "_cache/"
 WAMP_CACHE = WAMP_BASE + "_cache/"
 PROD_CACHE = PROD_BASE + "_cache/"
+API_CACHE = API_BASE + "_cache/"
 
 
 def parse_args():
@@ -17,8 +19,9 @@ def parse_args():
     parser = argparse.ArgumentParser(prog='deploy-dev', description="Deploy project from dev to wamp for testing.")
     parser.add_argument("project", type=str, help="Name of the project to deploy.")
     parser.add_argument("--PROD", action="store_true", help="Deploy to production server instead of DEV.")
+    parser.add_argument("--API", action="store_true", help="Deploy APIs")
     args = parser.parse_args()
-    return args.project, args.PROD
+    return args.project, args.PROD, args.API
 
 def check_dirs(name):
     import os
@@ -26,17 +29,19 @@ def check_dirs(name):
     dev_path = DEV_BASE + name + "/"
     prod_path = PROD_BASE + name + "/"
     wamp_path = WAMP_BASE + name + "/"
+    api_path = API_BASE + name + "/"
     dCache = DEV_CACHE + name + "/"
     wCache = WAMP_CACHE + name + "/"
     pCache = PROD_CACHE + name + "/"
+    aCache = API_CACHE + name + "/"
 
-    for base in [dev_path, prod_path, wamp_path, dCache, wCache, pCache]:
+    for base in [dev_path, prod_path, wamp_path, api_path, dCache, wCache, pCache, aCache]:
         if not os.path.exists(base):
             print(f"Creating project directory '{base}'...")
             os.makedirs(base)
     return True
 
-def cache_files(name, PROD=False):
+def cache_files(name, PROD=False, API=False):
     import os
     import shutil
 
@@ -51,6 +56,26 @@ def cache_files(name, PROD=False):
         for item in os.listdir(prod_path):
             src = os.path.join(prod_path, item)
             dest = os.path.join(pCache, item)
+            try:
+                shutil.move(src, dest)
+            except Exception as e:
+                print(f"Destination '{dest}' present, dumping contents and trying again...")
+                shutil.rmtree(dest)
+                shutil.move(src, dest)
+        print(f"Production Project '{name}' cached successfully from production.")
+        return
+    
+    if API:
+        api_path = API_BASE + name + "/"
+        aCache = API_CACHE + name + "/"
+        if not os.path.exists(api_path):
+            print(f"API path '{api_path}' does not exist.")
+            print(f"Creating directory '{api_path}'...")
+            os.makedirs(api_path)
+        # Copy files from api to cache
+        for item in os.listdir(api_path):
+            src = os.path.join(api_path, item)
+            dest = os.path.join(aCache, item)
             try:
                 shutil.move(src, dest)
             except Exception as e:
@@ -91,7 +116,7 @@ def cache_files(name, PROD=False):
 
     print(f"Project '{name}' cached successfully.")
 
-def deploy_files(name, PROD=False):
+def deploy_files(name, PROD=False, API=False):
     import os
     import shutil
 
@@ -114,6 +139,27 @@ def deploy_files(name, PROD=False):
                 shutil.copy2(src, dest)
 
         print(f"Production Project '{name}' deployed successfully to production.")
+        return
+    
+    if API:
+        api_path = API_BASE + name + "/"
+        build_path = ROOT_BASE + name + "/src/api/v1/"
+
+        if not os.path.exists(api_path):
+            print(f"API path '{api_path}' does not exist.")
+            print(f"Creating directory '{api_path}'...")
+            os.makedirs(api_path)
+
+        # Copy files from build to api
+        for item in os.listdir(build_path):
+            src = os.path.join(build_path, item)
+            dest = os.path.join(api_path, item)
+            if os.path.isdir(src):
+                shutil.copytree(src, dest, dirs_exist_ok=True)
+            else:
+                shutil.copy2(src, dest)
+
+        print(f"API for Project '{name}' deployed successfully to production.")
         return
 
     dev_path = DEV_BASE + name + "/"
@@ -144,12 +190,20 @@ def deploy_files(name, PROD=False):
 
     print(f"Project '{name}' deployed successfully.")
 
-def ftp_prod(name):
+def ftp_prod(name, PROD=False, API=False):
     import paramiko as Ftp
     import os
 
     KEY_PATH = "C:/Users/image/.ssh/home_ssh"
     prod_path = PROD_BASE + name
+    api_path = API_BASE + name
+
+    if PROD:
+        path = prod_path
+    elif API:
+        path = api_path
+    else:
+        return(-1)
 
     # Build connection
     client = Ftp.SSHClient()
@@ -163,23 +217,26 @@ def ftp_prod(name):
         look_for_keys=False
         )
     sftp = client.open_sftp()
-    dir = os.scandir( prod_path )
+    dir = os.scandir( path )
     for file in dir:
         if file.is_file():
-            sftp.put( prod_path + "/" + file.name, PROD_REMOTE + file.name )
+            sftp.put( path + "/" + file.name, PROD_REMOTE + file.name )
             print( file.name + " moved to production successfully" )
         if file.is_dir():
-            subdir = os.scandir( prod_path + "/" + file.name )
+            subdir = os.scandir( path + "/" + file.name )
             for subfile in subdir:
-                sftp.put( prod_path + "/" + file.name + "/" + subfile.name, PROD_REMOTE + file.name + "/" + subfile.name )
+                sftp.put( path + "/" + file.name + "/" + subfile.name, API_REMOTE + file.name + "/" + subfile.name )
+
                 print( subfile.name + " moved to production subdirectory " + file.name + " successfully" )
     
 if __name__ == "__main__":
-    [project_name, PROD] = parse_args()
+    [project_name, PROD, API] = parse_args()
     if check_dirs(project_name):
-        cache_files(project_name, PROD=PROD)
-        deploy_files(project_name, PROD=PROD)
+        cache_files(project_name, PROD=PROD, API=API)
+        deploy_files(project_name, PROD=PROD, API=API)
         if (PROD):
-            ftp_prod(project_name)
+            ftp_prod(project_name, PROD=PROD)
+        if (API):
+            ftp_prod(project_name, API=API)
     else:
         print("Directory check failed. Deployment aborted.")
