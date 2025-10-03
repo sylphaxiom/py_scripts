@@ -200,8 +200,10 @@ def ftp_prod(name, PROD=False, API=False):
 
     if PROD:
         path = prod_path
+        REMOTE = PROD_REMOTE
     elif API:
         path = api_path
+        REMOTE = API_REMOTE
     else:
         return(-1)
 
@@ -220,12 +222,12 @@ def ftp_prod(name, PROD=False, API=False):
     dir = os.scandir( path )
     for file in dir:
         if file.is_file():
-            sftp.put( path + "/" + file.name, PROD_REMOTE + file.name )
+            sftp.put( path + "/" + file.name, REMOTE + file.name )
             print( file.name + " moved to production successfully" )
         if file.is_dir():
             subdir = os.scandir( path + "/" + file.name )
             for subfile in subdir:
-                sftp.put( path + "/" + file.name + "/" + subfile.name, API_REMOTE + file.name + "/" + subfile.name )
+                sftp.put( path + "/" + file.name + "/" + subfile.name, REMOTE + file.name + "/" + subfile.name )
 
                 print( subfile.name + " moved to production subdirectory " + file.name + " successfully" )
     
