@@ -5,7 +5,8 @@ DEV_BASE = ROOT_BASE + "_DEV/"
 PROD_BASE = ROOT_BASE + "_PROD/"
 WAMP_BASE = "D:/wmap64/www/Project/"
 PROD_REMOTE = "/home2/xikihgmy/public_html/"
-API_REMOTE = "/home2/xikihgmy/api/v1/"
+API_REMOTE = "/home2/xikihgmy/public_html/api/v1/"
+API_SECURE = "/home2/xikihgmy/includes/"
 API_BASE = ROOT_BASE + "_API/"
 DEV_CACHE = DEV_BASE + "_cache/"
 WAMP_CACHE = WAMP_BASE + "_cache/"
@@ -221,6 +222,10 @@ def ftp_prod(name, PROD=False, API=False):
     sftp = client.open_sftp()
     dir = os.scandir( path )
     for file in dir:
+        if file.name == "bucket.php":
+            sftp.put( path + "/" + file.name, API_SECURE + file.name )
+            print( file.name + " moved to production successfully" )
+            continue
         if file.is_file():
             sftp.put( path + "/" + file.name, REMOTE + file.name )
             print( file.name + " moved to production successfully" )
@@ -228,7 +233,6 @@ def ftp_prod(name, PROD=False, API=False):
             subdir = os.scandir( path + "/" + file.name )
             for subfile in subdir:
                 sftp.put( path + "/" + file.name + "/" + subfile.name, REMOTE + file.name + "/" + subfile.name )
-
                 print( subfile.name + " moved to production subdirectory " + file.name + " successfully" )
     
 if __name__ == "__main__":
