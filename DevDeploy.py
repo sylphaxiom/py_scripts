@@ -222,7 +222,7 @@ def ftp_prod(name, PROD=False, API=False):
     sftp = client.open_sftp()
     dir = os.scandir( path )
     for file in dir:
-        if file.name == "bucket.php":
+        if file.name in ["bucket.php","DB_make.sql"]:
             sftp.put( path + "/" + file.name, API_SECURE + file.name )
             print( file.name + " moved to production successfully" )
             continue
