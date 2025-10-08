@@ -5,6 +5,7 @@ DEV_BASE = ROOT_BASE + "_DEV/"
 PROD_BASE = ROOT_BASE + "_PROD/"
 WAMP_BASE = "D:/wmap64/www/Project/"
 PROD_REMOTE = "/home2/xikihgmy/public_html/"
+DEV_REMOTE = "/home2/xikihgmy/test/"
 API_REMOTE = "/home2/xikihgmy/public_html/api/v1/"
 API_SECURE = "/home2/xikihgmy/includes/"
 API_BASE = ROOT_BASE + "_API/"
@@ -21,8 +22,9 @@ def parse_args():
     parser.add_argument("project", type=str, help="Name of the project to deploy.")
     parser.add_argument("--PROD", action="store_true", help="Deploy to production server instead of DEV.")
     parser.add_argument("--API", action="store_true", help="Deploy APIs")
+    parser.add_argument("--DEV", action="store_true", help="Deploy to Dev environment on web host.")
     args = parser.parse_args()
-    return args.project, args.PROD, args.API
+    return args.project, args.PROD, args.API, args.DEV
 
 def check_dirs(name):
     import os
@@ -191,20 +193,27 @@ def deploy_files(name, PROD=False, API=False):
 
     print(f"Project '{name}' deployed successfully.")
 
-def ftp_prod(name, PROD=False, API=False):
+def ftp_prod(name, PROD=False, API=False, DEV=False):
     import paramiko as Ftp
     import os
 
     KEY_PATH = "C:/Users/image/.ssh/home_ssh"
     prod_path = PROD_BASE + name
     api_path = API_BASE + name
+    dev_path = DEV_BASE + name
 
     if PROD:
         path = prod_path
         REMOTE = PROD_REMOTE
+        location = 'Production'
     elif API:
         path = api_path
         REMOTE = API_REMOTE
+        location = 'API'
+    elif DEV:
+        path = dev_path
+        REMOTE = DEV_REMOTE
+        location = 'Development'
     else:
         return(-1)
 
@@ -224,19 +233,19 @@ def ftp_prod(name, PROD=False, API=False):
     for file in dir:
         if file.name in ["bucket.php","DB_make.sql"]:
             sftp.put( path + "/" + file.name, API_SECURE + file.name )
-            print( file.name + " moved to production successfully" )
+            print( file.name + " moved to " + location + " successfully" )
             continue
         if file.is_file():
             sftp.put( path + "/" + file.name, REMOTE + file.name )
-            print( file.name + " moved to production successfully" )
+            print( file.name + " moved to " + location + " successfully" )
         if file.is_dir():
             subdir = os.scandir( path + "/" + file.name )
             for subfile in subdir:
                 sftp.put( path + "/" + file.name + "/" + subfile.name, REMOTE + file.name + "/" + subfile.name )
-                print( subfile.name + " moved to production subdirectory " + file.name + " successfully" )
+                print( subfile.name + " moved to " + location + " subdirectory " + file.name + " successfully" )
     
 if __name__ == "__main__":
-    [project_name, PROD, API] = parse_args()
+    [project_name, PROD, API, DEV] = parse_args()
     if check_dirs(project_name):
         cache_files(project_name, PROD=PROD, API=API)
         deploy_files(project_name, PROD=PROD, API=API)
@@ -244,5 +253,7 @@ if __name__ == "__main__":
             ftp_prod(project_name, PROD=PROD)
         if (API):
             ftp_prod(project_name, API=API)
+        if (DEV):
+            ftp_prod(project_name, DEV=DEV)
     else:
         print("Directory check failed. Deployment aborted.")
