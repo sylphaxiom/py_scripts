@@ -6,6 +6,7 @@ PROD_BASE = ROOT_BASE + "_PROD/"
 WAMP_BASE = "D:/wmap64/www/Project/"
 PROD_REMOTE = "/home2/xikihgmy/public_html/"
 DEV_REMOTE = "/home2/xikihgmy/test/"
+DND_REMOTE = "/home2/xikihgmy/dnd/"
 API_REMOTE = "/home2/xikihgmy/public_html/api/v1/"
 API_SECURE = "/home2/xikihgmy/includes/"
 API_BASE = ROOT_BASE + "_API/"
@@ -204,7 +205,10 @@ def ftp_prod(name, PROD=False, API=False, DEV=False):
 
     if PROD:
         path = prod_path
-        REMOTE = PROD_REMOTE
+        if name == "DnD-app":
+            REMOTE = DND_REMOTE
+        else:
+            REMOTE = PROD_REMOTE
         location = 'Production'
     elif API:
         path = api_path
