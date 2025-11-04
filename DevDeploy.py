@@ -7,7 +7,6 @@ WAMP_BASE = "D:/wmap64/www/Project/"
 PROD_REMOTE = "/home2/xikihgmy/public_html/"
 DEV_REMOTE = "/home2/xikihgmy/test/"
 DND_REMOTE = "/home2/xikihgmy/dnd/"
-API_REMOTE = "/home2/xikihgmy/public_html/api/v1/"
 API_SECURE = "/home2/xikihgmy/includes/"
 API_BASE = ROOT_BASE + "_API/"
 DEV_CACHE = DEV_BASE + "_cache/"
@@ -212,7 +211,12 @@ def ftp_prod(name, PROD=False, API=False, DEV=False):
         location = 'Production'
     elif API:
         path = api_path
-        REMOTE = API_REMOTE
+        if name == "DnD-app":
+            REMOTE = DND_REMOTE + "api/v1/"
+        elif DEV:
+            REMOTE = DEV_REMOTE + "api/v1/"
+        else:
+            REMOTE = PROD_REMOTE + "api/v1/"
         location = 'API'
     elif DEV:
         path = dev_path
@@ -235,7 +239,7 @@ def ftp_prod(name, PROD=False, API=False, DEV=False):
     sftp = client.open_sftp()
     dir = os.scandir( path )
     for file in dir:
-        if file.name in ["bucket.php","DB_make.sql"]:
+        if file.name in ["bucket.php","kothis.DB_make.sql","sylphaxiom.DB_make.sql"]:
             sftp.put( path + "/" + file.name, API_SECURE + file.name )
             print( file.name + " moved to " + location + " successfully" )
             continue
