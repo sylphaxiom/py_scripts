@@ -1,18 +1,17 @@
 # Define base path constants
-
 ROOT_BASE = "C:/users/image/code_projects/"
-DEV_BASE = ROOT_BASE + "_DEV/"
-PROD_BASE = ROOT_BASE + "_PROD/"
+DEV_BASE = f"{ROOT_BASE}_DEV/"
+PROD_BASE = f"{ROOT_BASE}_PROD/"
 WAMP_BASE = "D:/wmap64/www/Project/"
 PROD_REMOTE = "/home2/xikihgmy/public_html/"
 DEV_REMOTE = "/home2/xikihgmy/test/"
 DND_REMOTE = "/home2/xikihgmy/dnd/"
 API_SECURE = "/home2/xikihgmy/includes/"
-API_BASE = ROOT_BASE + "_API/"
-DEV_CACHE = DEV_BASE + "_cache/"
-WAMP_CACHE = WAMP_BASE + "_cache/"
-PROD_CACHE = PROD_BASE + "_cache/"
-API_CACHE = API_BASE + "_cache/"
+API_BASE = f"{ROOT_BASE}_API/"
+DEV_CACHE = f"{DEV_BASE}_cache/"
+WAMP_CACHE = f"{WAMP_BASE}_cache/"
+PROD_CACHE = f"{PROD_BASE}_cache/"
+API_CACHE =  f"{API_BASE}_cache/"
 
 
 def parse_args():
@@ -29,14 +28,14 @@ def parse_args():
 def check_dirs(name):
     import os
 
-    dev_path = DEV_BASE + name + "/"
-    prod_path = PROD_BASE + name + "/"
-    wamp_path = WAMP_BASE + name + "/"
-    api_path = API_BASE + name + "/"
-    dCache = DEV_CACHE + name + "/"
-    wCache = WAMP_CACHE + name + "/"
-    pCache = PROD_CACHE + name + "/"
-    aCache = API_CACHE + name + "/"
+    dev_path = f"{DEV_BASE}{name}/"
+    prod_path = f"{PROD_BASE}{name}/"
+    wamp_path = f"{WAMP_BASE}{name}/"
+    api_path = f"{API_BASE}{name}/"
+    dCache = f"{DEV_CACHE}{name}/"
+    wCache = f"{WAMP_CACHE}{name}/"
+    pCache = f"{PROD_CACHE}{name}/"
+    aCache = f"{API_CACHE}{name}/"
 
     for base in [dev_path, prod_path, wamp_path, api_path, dCache, wCache, pCache, aCache]:
         if not os.path.exists(base):
@@ -44,13 +43,89 @@ def check_dirs(name):
             os.makedirs(base)
     return True
 
+def check_files(name,PROD=False,DEV=False):
+    import os
+    import json
+    import shutil
+    # Use this function to make any temporary (or perminent)
+    # changes to your files. For instance, I have URLs that change
+    # depending on where the files go. If I push to DEV, a set of 
+    # values are needed and the same for PROD. This function
+    # will make the necessary changes to the files, push them,
+    # then revert the files after the push. This requires no changes
+    # in the dev environment. This script will look for a file named
+    # mods.json which will contain a list of dicts as 
+    # {filename:"<file>",search:"<search>",update:"<update>",PROD?:bool,DEV?:bool}
+    # base path is assumed to be "/src/"
+
+    PATH_BASE = f"{ROOT_BASE}{name}/"
+    SRC = f"{PATH_BASE}src/"
+    TEMP = f"{PATH_BASE}temp/"
+    trashCan = []
+
+    with open(f"{PATH_BASE}mods.json","r") as file:
+        mods = json.load(file)
+    if not os.path.exists(TEMP):
+        os.mkdir(TEMP)
+    for mod in mods:
+        filename = mod['filename']
+        file = f"{SRC}{filename}" #contains full path
+        search = mod['search']
+        update = mod['update']
+        isProd = mod.get("PROD")
+        isDev = mod.get("DEV")
+        if filename.find("/"):
+            filename = filename.split("/")[-1]
+        backup = f"{TEMP}{filename}"
+
+        if PROD and not isProd:
+            continue
+        if DEV and not isDev:
+            continue
+
+        cp = shutil.copyfile(src=file,dst=backup)
+        assert cp == backup ,f"An error must have occurred, {cp} is different from {backup}"
+        contents = ''
+        with open(file) as original:
+            for line in original:
+                newLine = ''
+                if line.find(search) != -1:
+                    print(f"Found a change in {filename} for {search}")
+                    newLine = line.replace(search, update)
+                    print(f"Adding {filename} to cleanup")
+                    if file not in trashCan:
+                        trashCan.append(file)
+                else:
+                    newLine = line
+                contents += newLine
+        with open(file,"w") as original:
+            original.write(contents)
+    return trashCan
+
+def cleanup(trashCan, name):
+    import os
+    import shutil
+    import subprocess
+
+    PATH_BASE = f"{ROOT_BASE}{name}/"
+    TEMP = f"{PATH_BASE}temp/"
+
+    for trash in trashCan:
+        filename = trash.split("/")[-1]
+        tmpFile = f"{TEMP}{filename}"
+        shutil.copyfile(src=tmpFile,dst=trash)
+        os.remove(tmpFile)
+    os.rmdir(TEMP)
+    subprocess.check_call('npm run clean', shell=True)    
+    print("Cleanup complete")
+
 def cache_files(name, PROD=False, API=False):
     import os
     import shutil
 
     if PROD:
-        prod_path = PROD_BASE + name + "/"
-        pCache = PROD_CACHE + name + "/"
+        prod_path = f"{PROD_BASE}{name}/"
+        pCache = f"{PROD_CACHE}{name}/"
         if not os.path.exists(prod_path):
             print(f"Production path '{prod_path}' does not exist.")
             print(f"Creating directory '{prod_path}'...")
@@ -124,8 +199,8 @@ def deploy_files(name, PROD=False, API=False):
     import shutil
 
     if PROD:
-        prod_path = PROD_BASE + name + "/"
-        build_path = ROOT_BASE + name + "/build/client/"
+        prod_path = f"{PROD_BASE}{name}/"
+        build_path = f"{ROOT_BASE}{name}/build/client/"
 
         if not os.path.exists(prod_path):
             print(f"Production path '{prod_path}' does not exist.")
@@ -145,8 +220,8 @@ def deploy_files(name, PROD=False, API=False):
         return
     
     if API:
-        api_path = API_BASE + name + "/"
-        build_path = ROOT_BASE + name + "/src/api/v1/"
+        api_path = f"{API_BASE}{name}/"
+        build_path = f"{ROOT_BASE}{name}/src/api/v1/"
 
         if not os.path.exists(api_path):
             print(f"API path '{api_path}' does not exist.")
@@ -165,9 +240,9 @@ def deploy_files(name, PROD=False, API=False):
         print(f"API for Project '{name}' deployed successfully to production.")
         return
 
-    dev_path = DEV_BASE + name + "/"
-    wamp_path = WAMP_BASE + name + "/"
-    build_path = ROOT_BASE + name + "/build/client/"
+    dev_path = f"{DEV_BASE}{name}/"
+    wamp_path = f"{WAMP_BASE}{name}/"
+    build_path = f"{ROOT_BASE}{name}/build/client/"
 
     if not os.path.exists(dev_path):
         print(f"Development path '{dev_path}' does not exist.")
@@ -263,10 +338,13 @@ if __name__ == "__main__":
         cache_files(project_name, PROD=PROD, API=API)
         deploy_files(project_name, PROD=PROD, API=API)
         if (PROD):
+            trash = check_files(project_name, PROD=PROD)
             ftp_prod(project_name, PROD=PROD)
         if (API):
             ftp_prod(project_name, API=API)
         if (DEV):
+            trash = check_files(project_name, DEV=DEV)
             ftp_prod(project_name, DEV=DEV)
     else:
         print("Directory check failed. Deployment aborted.")
+    cleanup(trash,project_name) #Cleanup no matter what :)
