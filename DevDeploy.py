@@ -240,17 +240,22 @@ def ftp_prod(name, PROD=False, API=False, DEV=False):
     dir = os.scandir( path )
     for file in dir:
         if file.name in ["bucket.php","kothis.DB_make.sql","sylphaxiom.DB_make.sql"]:
-            sftp.put( path + "/" + file.name, API_SECURE + file.name )
-            print( file.name + " moved to " + location + " successfully" )
+            sftp.put(f"{path}/{file.name}", f"{API_SECURE}{file.name}" )
+            print( f"{file.name} moved to {location} successfully" )
             continue
         if file.is_file():
-            sftp.put( path + "/" + file.name, REMOTE + file.name )
-            print( file.name + " moved to " + location + " successfully" )
+            sftp.put( f"{path}/{file.name}", f"{REMOTE}{file.name}" )
+            print(f"{file.name} moved to {location} successfully" )
         if file.is_dir():
-            subdir = os.scandir( path + "/" + file.name )
+            subdir = os.scandir( f"{path}/{file.name}" )
+            try:
+                sftp.listdir(f"{REMOTE}{file.name}")
+            except:
+                print(f"Remote directory {REMOTE}{file.name} is missing, please add directory to continue...")
+                input("Press Enter to continue...")
             for subfile in subdir:
-                sftp.put( path + "/" + file.name + "/" + subfile.name, REMOTE + file.name + "/" + subfile.name )
-                print( subfile.name + " moved to " + location + " subdirectory " + file.name + " successfully" )
+                sftp.put( f"{path}/{file.name}/{subfile.name}", f"{REMOTE}{file.name}/{subfile.name}" )
+                print(f"{subfile.name} moved to {location} subdirectory {file.name} successfully" )
     
 if __name__ == "__main__":
     [project_name, PROD, API, DEV] = parse_args()
