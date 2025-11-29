@@ -338,6 +338,9 @@ def ftp_prod(name, PROD=False, API=False, DEV=False):
                 print(f"{subfile.name} moved to {location} subdirectory {file.name} successfully" )
     
 if __name__ == "__main__":
+    import time
+    import math
+    start = time.time()
     [project_name, PROD, API, DEV] = parse_args()
     if setup(project_name):
         cache_files(project_name, PROD=PROD, API=API)
@@ -353,3 +356,6 @@ if __name__ == "__main__":
     else:
         print("Directory check failed. Deployment aborted.")
     cleanup(trash,project_name) #Cleanup no matter what :)
+    end = time.time()
+    duration = math.floor(end-start)
+    print(f"Deployment completed in {duration}s.")
