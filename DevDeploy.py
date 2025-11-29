@@ -43,6 +43,7 @@ def setup(name):
             print(f"Creating project directory '{base}'...")
             os.makedirs(base)
 
+    os.chdir(f"{ROOT_BASE}{name}")
     print("running playwright tests...")
     subprocess.check_call('npx playwright test --quiet --retries 2 --last-failed', shell=True)
 
