@@ -44,7 +44,7 @@ def setup(name):
             os.makedirs(base)
 
     print("running playwright tests...")
-    subprocess.check_call('npx playwright test --quiet --reties 2 --last-failed', shell=True)
+    subprocess.check_call('npx playwright test --quiet --retries 2 --last-failed', shell=True)
 
     return True
 
