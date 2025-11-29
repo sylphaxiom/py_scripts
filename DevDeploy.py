@@ -25,8 +25,9 @@ def parse_args():
     args = parser.parse_args()
     return args.project, args.PROD, args.API, args.DEV
 
-def check_dirs(name):
+def setup(name):
     import os
+    import subprocess
 
     dev_path = f"{DEV_BASE}{name}/"
     prod_path = f"{PROD_BASE}{name}/"
@@ -41,6 +42,10 @@ def check_dirs(name):
         if not os.path.exists(base):
             print(f"Creating project directory '{base}'...")
             os.makedirs(base)
+
+    print("running playwright tests...")
+    subprocess.check_call('npx playwright test --quiet --reties 2 --last-failed', shell=True)
+
     return True
 
 def check_files(name,PROD=False,DEV=False):
@@ -334,7 +339,7 @@ def ftp_prod(name, PROD=False, API=False, DEV=False):
     
 if __name__ == "__main__":
     [project_name, PROD, API, DEV] = parse_args()
-    if check_dirs(project_name):
+    if setup(project_name):
         cache_files(project_name, PROD=PROD, API=API)
         deploy_files(project_name, PROD=PROD, API=API)
         if (PROD):

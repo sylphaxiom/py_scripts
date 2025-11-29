@@ -25,8 +25,8 @@ and the standard vite dev setup for dev.
   - root: "C:\users\image\code_projects\
   - Build = ./<project_name>/build/client/\*
   - Dev = ./\_DEV/<project_name>/\*
-  - Prod = ./\_PROD/<project_name>\/*
-  - API = ./\_API/<project_name>\/*
+  - Prod = ./\_PROD/<project_name>\/\*
+  - API = ./\_API/<project_name>\/\*
   - cache = ../\_cache/<project-name>/\*
   - WAMP = D:/wamp64/www/Project/<simple_project_name>/
     - <simple_project_name> is the name without `.com` or anything else potentially problematic... I.E. sylphaxiom.com is sylphaxiom.
@@ -43,6 +43,12 @@ and the standard vite dev setup for dev.
   - Validate the presence of local directories.
     - Please note, the script does NOT check or create directories in the remote
       location, so make sure your final folder structure immitates your local (or is as desired)
+    - Added error handling to prompt for directory creation and wait for response.
+  - Runs the full set of playwright tests for the project prior to anything else and displays the report
+    - At this time I have not set up the ability to give feedback from the script regarding the playwright tests.
+  - Edits and reverts environment changes such as paths specific to the environment.
+    - All modifications added to mods.json
+  - After everything is done running cleans up temporary files and reverts changes.
 
 - Parameters:
   - project - String - name of the project
@@ -53,4 +59,3 @@ and the standard vite dev setup for dev.
     - bucket and DB_make are both in a separate directory that is inaccessible from the web
       - These files contain the DB structure and any passwords necessary for the application as well as header validation.
       - These are secured files and should never be seen by anyone.
-
