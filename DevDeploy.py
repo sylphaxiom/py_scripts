@@ -45,7 +45,8 @@ def setup(name):
 
     os.chdir(f"{ROOT_BASE}{name}")
     print("running playwright tests...")
-    subprocess.check_call('npx playwright test --quiet --retries 2', shell=True)
+    subprocess.check_call('npx playwright install', shell=True)
+    subprocess.check_call('npx playwright test', shell=True)
 
     return True
 
