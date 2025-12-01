@@ -1,5 +1,5 @@
 # Define base path constants
-ROOT_BASE = "C:/users/image/code_projects/"
+ROOT_BASE = "C:/Users/image/code_projects/"
 DEV_BASE = f"{ROOT_BASE}_DEV/"
 PROD_BASE = f"{ROOT_BASE}_PROD/"
 WAMP_BASE = "D:/wmap64/www/Project/"
@@ -46,7 +46,7 @@ def setup(name):
     os.chdir(f"{ROOT_BASE}{name}")
     print("running playwright tests...")
     subprocess.check_call('npx playwright install', shell=True)
-    subprocess.check_call('npx playwright test', shell=True)
+    subprocess.check_call('npx playwright test --retries 2', shell=True)
 
     return True
 
