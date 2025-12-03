@@ -25,7 +25,7 @@ def parse_args():
     args = parser.parse_args()
     return args.project, args.PROD, args.API, args.DEV
 
-def setup(name):
+def setup(name, API=False):
     import os
     import subprocess
 
@@ -42,11 +42,11 @@ def setup(name):
         if not os.path.exists(base):
             print(f"Creating project directory '{base}'...")
             os.makedirs(base)
-
-    os.chdir(f"{ROOT_BASE}{name}")
-    print("running playwright tests...")
-    subprocess.check_call('npx playwright install', shell=True)
-    subprocess.check_call('npx playwright test --retries 2', shell=True)
+    if not API:
+        os.chdir(f"{ROOT_BASE}{name}")
+        print("running playwright tests...")
+        subprocess.check_call('npx playwright install', shell=True)
+        subprocess.check_call('npx playwright test --retries 2', shell=True)
 
     return True
 
@@ -239,6 +239,7 @@ def deploy_files(name, PROD=False, API=False):
         for item in os.listdir(build_path):
             src = os.path.join(build_path, item)
             dest = os.path.join(api_path, item)
+
             if os.path.isdir(src):
                 shutil.copytree(src, dest, dirs_exist_ok=True)
             else:
@@ -322,6 +323,8 @@ def ftp_prod(name, PROD=False, API=False, DEV=False):
     dir = os.scandir( path )
     for file in dir:
         if file.name in ["bucket.php","kothis.DB_make.sql","sylphaxiom.DB_make.sql"]:
+            if file.name == "bucket.php":
+                continue
             sftp.put(f"{path}/{file.name}", f"{API_SECURE}{file.name}" )
             print( f"{file.name} moved to {location} successfully" )
             continue
@@ -343,8 +346,9 @@ if __name__ == "__main__":
     import time
     import math
     start = time.time()
+    trash = ''
     [project_name, PROD, API, DEV] = parse_args()
-    if setup(project_name):
+    if setup(project_name, API=API):
         cache_files(project_name, PROD=PROD, API=API)
         deploy_files(project_name, PROD=PROD, API=API)
         if (PROD):
@@ -357,7 +361,8 @@ if __name__ == "__main__":
             ftp_prod(project_name, DEV=DEV)
     else:
         print("Directory check failed. Deployment aborted.")
-    cleanup(trash,project_name) #Cleanup no matter what :)
+    if trash:
+        cleanup(trash,project_name) #Cleanup no if there's trash :)
     end = time.time()
     duration = math.floor(end-start)
     print(f"Deployment completed in {duration}s.")
