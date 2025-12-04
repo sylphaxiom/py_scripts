@@ -155,7 +155,10 @@ def cleanup(name, recycling=False):
         else:
             with open(recycleBin, "r") as trash:
                 trashTmp = json.load(trash)
-                recycling = trashTmp[0]
+                try:
+                    recycling = trashTmp[0]
+                except IndexError:
+                    recycling = trashTmp
             
     for trash in recycling:
         filename = trash.split("/")[-1]
