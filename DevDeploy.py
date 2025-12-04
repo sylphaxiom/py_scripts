@@ -22,10 +22,12 @@ def parse_args():
     parser.add_argument("--PROD", action="store_true", help="Deploy to production server instead of DEV.")
     parser.add_argument("--API", action="store_true", help="Deploy APIs")
     parser.add_argument("--DEV", action="store_true", help="Deploy to Dev environment on web host.")
+    parser.add_argument("--CHECK", action="store_true", help="Run file check ONLY to adjust files.")
+    parser.add_argument("--SKIP", action="store_true", help="Skip Playwright tests.")
     args = parser.parse_args()
-    return args.project, args.PROD, args.API, args.DEV
+    return args.project, args.PROD, args.API, args.DEV, args.CHECK, args.SKIP
 
-def setup(name, API=False):
+def setup(name, API=False, CHECK=False, SKIP=False):
     import os
     import subprocess
 
@@ -38,11 +40,15 @@ def setup(name, API=False):
     pCache = f"{PROD_CACHE}{name}/"
     aCache = f"{API_CACHE}{name}/"
 
+
+
     for base in [dev_path, prod_path, wamp_path, api_path, dCache, wCache, pCache, aCache]:
         if not os.path.exists(base):
             print(f"Creating project directory '{base}'...")
             os.makedirs(base)
-    if not API:
+    if API or CHECK or SKIP:
+        print("skipping playwright...")
+    else:
         os.chdir(f"{ROOT_BASE}{name}")
         print("running playwright tests...")
         subprocess.check_call('npx playwright install', shell=True)
@@ -50,7 +56,7 @@ def setup(name, API=False):
 
     return True
 
-def check_files(name,PROD=False,DEV=False):
+def check_files(name,PROD=False,DEV=False,CHECK=False):
     import os
     import json
     import shutil
@@ -68,12 +74,25 @@ def check_files(name,PROD=False,DEV=False):
     PATH_BASE = f"{ROOT_BASE}{name}/"
     SRC = f"{PATH_BASE}src/"
     TEMP = f"{PATH_BASE}temp/"
-    trashCan = []
+    recycling = []
+    recycleBin = f"{PATH_BASE}recycling.json"
+
+    if CHECK and PROD:
+        print("Checking Production...")
+    elif CHECK and DEV:
+        print("Checking Development...")
+    elif not CHECK:
+        print("Proceeding without Check...")
+    else:
+        print("Oops, missing PROD or DEV, try again with one of those flags.")
+        exit(0)
 
     with open(f"{PATH_BASE}mods.json","r") as file:
         mods = json.load(file)
+
     if not os.path.exists(TEMP):
         os.mkdir(TEMP)
+
     for mod in mods:
         filename = mod['filename']
         file = f"{SRC}{filename}" #contains full path
@@ -89,9 +108,9 @@ def check_files(name,PROD=False,DEV=False):
             continue
         if DEV and not isDev:
             continue
-
-        cp = shutil.copyfile(src=file,dst=backup)
-        assert cp == backup ,f"An error must have occurred, {cp} is different from {backup}"
+        if CHECK:
+            shutil.copyfile(src=file,dst=backup)
+            print(f"Original file {file} copied to {backup}")
         contents = ''
         with open(file) as original:
             for line in original:
@@ -100,29 +119,56 @@ def check_files(name,PROD=False,DEV=False):
                     print(f"Found a change in {filename} for {search}")
                     newLine = line.replace(search, update)
                     print(f"Adding {filename} to cleanup")
-                    if file not in trashCan:
-                        trashCan.append(file)
+                    if file not in recycling:
+                        recycling.append(file)
                 else:
                     newLine = line
                 contents += newLine
         with open(file,"w") as original:
-            original.write(contents)
-    return trashCan
+            original.write(contents)    
+    try:
+        with open(recycleBin, "x") as trash:
+            json.dump(recycling, trash)
+    except FileExistsError:
+        print(f"Trash is present, adding to instance...")
+        with open(recycleBin, "r") as trash:
+            if not recycling:
+                recycling = json.load(trash)
+            else:
+                recycling.append(json.load(trash))
+    return recycling
 
-def cleanup(trashCan, name):
+def cleanup(name, recycling=False):
     import os
     import shutil
+    import json
     import subprocess
 
     PATH_BASE = f"{ROOT_BASE}{name}/"
     TEMP = f"{PATH_BASE}temp/"
+    recycleBin = f"{PATH_BASE}recycling.json"
 
-    for trash in trashCan:
+    if not recycling:
+        if not os.path.exists(recycleBin):
+            print(f"Looks like nothing needs cleaned up here... Guess I'll be leaving then.")
+            exit(0)
+        else:
+            with open(recycleBin, "r") as trash:
+                trashTmp = json.load(trash)
+                recycling = trashTmp[0]
+            
+    for trash in recycling:
         filename = trash.split("/")[-1]
         tmpFile = f"{TEMP}{filename}"
+        print(f"Copying {tmpFile} to {trash}")
         shutil.copyfile(src=tmpFile,dst=trash)
         os.remove(tmpFile)
-    os.rmdir(TEMP)
+    try:
+        os.rmdir(TEMP)
+        os.remove(recycleBin)
+    except FileNotFoundError:
+        print("TMP directory or recycleBin are missing, which is ok.")
+
     subprocess.check_call('npm run clean', shell=True)    
     print("Cleanup complete")
 
@@ -274,7 +320,7 @@ def deploy_files(name, PROD=False, API=False):
             shutil.copy2(src, destDev)
             shutil.copy2(src, destWamp)
 
-    print(f"Project '{name}' deployed successfully.")
+    print(f"Project '{name}' staged successfully.")
 
 def ftp_prod(name, PROD=False, API=False, DEV=False):
     import paramiko as Ftp
@@ -347,22 +393,25 @@ if __name__ == "__main__":
     import math
     start = time.time()
     trash = ''
-    [project_name, PROD, API, DEV] = parse_args()
-    if setup(project_name, API=API):
+    [project_name, PROD, API, DEV, CHECK, SKIP] = parse_args()
+    if setup(project_name, API=API, CHECK=CHECK, SKIP=SKIP):
+        if (CHECK):
+            check_files(project_name, PROD=PROD, DEV=DEV, CHECK=CHECK)
+            print("I'm out, see you after the build is done.")
+            exit(0)
         cache_files(project_name, PROD=PROD, API=API)
         deploy_files(project_name, PROD=PROD, API=API)
-        if (PROD):
+        if (PROD and not CHECK):
             trash = check_files(project_name, PROD=PROD)
             ftp_prod(project_name, PROD=PROD)
         if (API):
             ftp_prod(project_name, API=API)
-        if (DEV):
+        if (DEV and not CHECK):
             trash = check_files(project_name, DEV=DEV)
             ftp_prod(project_name, DEV=DEV)
     else:
         print("Directory check failed. Deployment aborted.")
-    if trash:
-        cleanup(trash,project_name) #Cleanup no if there's trash :)
+    cleanup(project_name,recycling=trash) #Cleanup no matter what :)
     end = time.time()
     duration = math.floor(end-start)
     print(f"Deployment completed in {duration}s.")
