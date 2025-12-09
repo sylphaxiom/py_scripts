@@ -164,15 +164,18 @@ def cleanup(name, recycling=False):
         filename = trash.split("/")[-1]
         tmpFile = f"{TEMP}{filename}"
         print(f"Copying {tmpFile} to {trash}")
-        shutil.copyfile(src=tmpFile,dst=trash)
-        os.remove(tmpFile)
+        try:
+            shutil.copyfile(src=tmpFile,dst=trash)
+            os.remove(tmpFile)
+        except FileNotFoundError:
+            print(f"File {tmpFile} missing, proceeding with cleanup...")
     try:
         os.rmdir(TEMP)
         os.remove(recycleBin)
     except FileNotFoundError:
         print("TMP directory or recycleBin are missing, which is ok.")
 
-    subprocess.check_call('npm run clean', shell=True)    
+    subprocess.check_call('npm run clean', shell=True, cwd=PATH_BASE)    
     print("Cleanup complete")
 
 def cache_files(name, PROD=False, API=False):
@@ -381,16 +384,19 @@ def ftp_prod(name, PROD=False, API=False, DEV=False):
             sftp.put( f"{path}/{file.name}", f"{REMOTE}{file.name}" )
             print(f"{file.name} moved to {location} successfully" )
         if file.is_dir():
-            subdir = os.scandir( f"{path}/{file.name}" )
-            try:
-                sftp.listdir(f"{REMOTE}{file.name}")
-            except:
-                print(f"Remote directory {REMOTE}{file.name} is missing, please add directory to continue...")
-                input("Press Enter to continue...")
-            for subfile in subdir:
-                sftp.put( f"{path}/{file.name}/{subfile.name}", f"{REMOTE}{file.name}/{subfile.name}" )
-                print(f"{subfile.name} moved to {location} subdirectory {file.name} successfully" )
-    
+            for root, dirs, files in os.walk(file):
+                for dir in dirs:
+                    try:
+                        sftp.listdir(f"{REMOTE}{file.name}")
+                    except:
+                        print(f"Remote directory {REMOTE}{file.name} is missing, please add directory to continue...")
+                        input("Press Enter to continue...")
+                for subfile in files:
+                    print(f"{os.path.join(root,subfile)} vs {root}/{subfile}")
+                    print(f"{os.path.join(REMOTE,subfile)} vs {REMOTE}/{subfile}")
+                    sftp.put( f"{root}/{subfile}", f"{REMOTE}/{subfile}" )
+                    print(f"{root}/{subfile} moved to {REMOTE}/{subfile} subdirectory {root} successfully" )
+
 if __name__ == "__main__":
     import time
     import math
