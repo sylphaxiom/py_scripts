@@ -181,6 +181,10 @@ def cleanup(name, recycling=False):
     try:
         os.rmdir(TEMP)
         os.remove(recycleBin)
+    except OSError:
+        input("Contents not empty, please verify prior to delete...")
+        for f in os.listdir(TEMP):
+             os.remove(f)
     except FileNotFoundError:
         print("TMP directory or recycleBin are missing, which is ok.")
     
@@ -350,14 +354,14 @@ def ftp_prod(name, PROD=False, API=False, DEV=False):
     dev_path = Win.join(DEV_BASE,name)
 
     if PROD:
-        path = prod_path
+        LOCAL_ROOT = prod_path
         location = 'Production'
         if name == "DnD-app":
             REMOTE = DND_REMOTE
         else:
             REMOTE = PROD_REMOTE
     elif API:
-        path = api_path
+        LOCAL_ROOT = api_path
         location = 'API'
         if name == "DnD-app":
             REMOTE = Unx.join(DND_REMOTE,"api/v1/")
@@ -366,7 +370,7 @@ def ftp_prod(name, PROD=False, API=False, DEV=False):
         else:
             REMOTE = Unx.join(PROD_REMOTE,"api/v1/")
     elif DEV:
-        path = dev_path
+        LOCAL_ROOT = dev_path
         REMOTE = DEV_REMOTE
         location = 'Development'
     else:
@@ -394,7 +398,7 @@ def ftp_prod(name, PROD=False, API=False, DEV=False):
                 print(f"Local: {file} vs Remote: {remotePath}")
                 sftp.put( f"{file}", f"{remotePath}" )
                 print(f"{file} moved to {remotePath} subdirectory {relPath} successfully" )
-    dir = os.scandir( path )
+    dir = os.scandir( LOCAL_ROOT )
     for file in dir:
         if file.name in ["bucket.php","kothis.DB_make.sql","sylphaxiom.DB_make.sql"]:
             if file.name == "bucket.php":
@@ -409,9 +413,14 @@ def ftp_prod(name, PROD=False, API=False, DEV=False):
             for path, dirs, files in os.walk(file):
                 for dir in dirs:
                     try:
-                        sftp.listdir(Unx.join(REMOTE,Win.relpath(dir,path)))
+                        winPath = Win.join(path,dir)
+                        bits = pathlib.PureWindowsPath(winPath).relative_to(LOCAL_ROOT)
+                        relPath = pathlib.PurePath.as_posix(pathlib.PureWindowsPath(bits))
+                        remotePath = Unx.join(REMOTE,relPath)
+                        print(f"Local: {subfile} vs Remote: {remotePath}")
+                        sftp.listdir(remotePath)
                     except:
-                        print(f"Remote directory {Unx.join(REMOTE,Win.relpath(dir,file))} is missing, please add directory to continue...")
+                        print(f"Remote directory {remotePath} is missing, please add directory to continue...")
                         input("Press Enter to continue...")
                 for subfile in files:
                     if Win.isdir(subfile):
@@ -419,9 +428,8 @@ def ftp_prod(name, PROD=False, API=False, DEV=False):
                     else:
                         pathlib.PureWindowsPath(root).anchor
                         winPath = Win.join(path,subfile)
-                        bits = pathlib.PureWindowsPath(winPath).relative_to(root)
-                        winBit = Win.join(Win.basename(path),subfile)
-                        relPath = pathlib.PurePath.as_posix(pathlib.PureWindowsPath(winBit))
+                        bits = pathlib.PureWindowsPath(winPath).relative_to(LOCAL_ROOT)
+                        relPath = pathlib.PurePath.as_posix(pathlib.PureWindowsPath(bits))
                         remotePath = Unx.join(REMOTE,relPath)
                         print(f"Local: {subfile} vs Remote: {remotePath}")
                         sftp.put( winPath, remotePath )
