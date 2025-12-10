@@ -1,21 +1,33 @@
+import posixpath as Unx
+import ntpath as Win
+import os
+import subprocess
+import argparse
+import json
+import shutil
+import paramiko as Ftp
+import pathlib
 # Define base path constants
-ROOT_BASE = "C:/Users/image/code_projects/"
-DEV_BASE = f"{ROOT_BASE}_DEV/"
-PROD_BASE = f"{ROOT_BASE}_PROD/"
-WAMP_BASE = "D:/wmap64/www/Project/"
-PROD_REMOTE = "/home2/xikihgmy/public_html/"
-DEV_REMOTE = "/home2/xikihgmy/test/"
-DND_REMOTE = "/home2/xikihgmy/dnd/"
-API_SECURE = "/home2/xikihgmy/includes/"
-API_BASE = f"{ROOT_BASE}_API/"
-DEV_CACHE = f"{DEV_BASE}_cache/"
-WAMP_CACHE = f"{WAMP_BASE}_cache/"
-PROD_CACHE = f"{PROD_BASE}_cache/"
-API_CACHE =  f"{API_BASE}_cache/"
 
+# Windows stype paths
+ROOT_BASE = Win.realpath("C:\\Users\\image\\code_projects\\")
+WAMP_BASE = Win.realpath("D:\\wmap64\\www\\Project\\")
+DEV_BASE = Win.join(ROOT_BASE,"_DEV\\")
+PROD_BASE = Win.join(ROOT_BASE,"_PROD\\")
+API_BASE = Win.join(ROOT_BASE,"_API\\")
+DEV_CACHE = Win.join(DEV_BASE,"_cache\\")
+WAMP_CACHE = Win.join(WAMP_BASE,"_cache\\")
+PROD_CACHE = Win.join(PROD_BASE,"_cache\\")
+API_CACHE =  Win.join(API_BASE,"_cache\\")
 
+# Unix style paths
+PROD_REMOTE = Unx.realpath("/home2/xikihgmy/public_html/")
+DEV_REMOTE = Unx.realpath("/home2/xikihgmy/test/")
+DND_REMOTE = Unx.realpath("/home2/xikihgmy/dnd/")
+API_SECURE = Unx.realpath("/home2/xikihgmy/includes/")
+
+# Parse CLI arguments
 def parse_args():
-    import argparse
 
     parser = argparse.ArgumentParser(prog='deploy-dev', description="Deploy project from dev to wamp for testing.")
     parser.add_argument("project", type=str, help="Name of the project to deploy.")
@@ -27,39 +39,37 @@ def parse_args():
     args = parser.parse_args()
     return args.project, args.PROD, args.API, args.DEV, args.CHECK, args.SKIP
 
-def setup(name, API=False, CHECK=False, SKIP=False):
-    import os
-    import subprocess
+# Loop through potential local paths and create if missing
+# IF PROD -> change dir to project root ROOT_BASE + project_name
+def setup(name, PROD=False):
 
-    dev_path = f"{DEV_BASE}{name}/"
-    prod_path = f"{PROD_BASE}{name}/"
-    wamp_path = f"{WAMP_BASE}{name}/"
-    api_path = f"{API_BASE}{name}/"
-    dCache = f"{DEV_CACHE}{name}/"
-    wCache = f"{WAMP_CACHE}{name}/"
-    pCache = f"{PROD_CACHE}{name}/"
-    aCache = f"{API_CACHE}{name}/"
-
-
+    dev_path = Win.join(DEV_BASE,name)
+    prod_path = Win.join(PROD_BASE,name)
+    wamp_path = Win.join(WAMP_BASE,name)
+    api_path = Win.join(API_BASE,name)
+    dCache = Win.join(DEV_CACHE,name)
+    wCache = Win.join(WAMP_CACHE,name)
+    pCache = Win.join(PROD_CACHE,name)
+    aCache = Win.join(API_CACHE,name)
+    root = Win.join(ROOT_BASE,name)
 
     for base in [dev_path, prod_path, wamp_path, api_path, dCache, wCache, pCache, aCache]:
-        if not os.path.exists(base):
+        if not Win.exists(base):
             print(f"Creating project directory '{base}'...")
             os.makedirs(base)
-    if API or CHECK or SKIP:
-        print("skipping playwright...")
-    else:
-        os.chdir(f"{ROOT_BASE}{name}")
+    if PROD:
+        os.chdir(root)
         print("running playwright tests...")
         subprocess.check_call('npx playwright install', shell=True)
         subprocess.check_call('npx playwright test --retries 2', shell=True)
+    else:
+        print("skipping playwright...")
 
     return True
 
+# Check files for any modifications found in mods.json
+# Modify the files according to the JSON and add to recycle.json
 def check_files(name,PROD=False,DEV=False,CHECK=False):
-    import os
-    import json
-    import shutil
     # Use this function to make any temporary (or perminent)
     # changes to your files. For instance, I have URLs that change
     # depending on where the files go. If I push to DEV, a set of 
@@ -71,11 +81,12 @@ def check_files(name,PROD=False,DEV=False,CHECK=False):
     # {filename:"<file>",search:"<search>",update:"<update>",PROD?:bool,DEV?:bool}
     # base path is assumed to be "/src/"
 
-    PATH_BASE = f"{ROOT_BASE}{name}/"
-    SRC = f"{PATH_BASE}src/"
-    TEMP = f"{PATH_BASE}temp/"
+    PATH_BASE = Win.join(ROOT_BASE,name)
+    SRC = Win.join(PATH_BASE,"src\\")
+    TEMP = Win.join(PATH_BASE,"temp\\")
+    MODS = Win.join(PATH_BASE,"mods.json")
     recycling = []
-    recycleBin = f"{PATH_BASE}recycling.json"
+    recycleBin = Win.join(PATH_BASE,"recycling.json")
 
     if CHECK and PROD:
         print("Checking Production...")
@@ -87,30 +98,29 @@ def check_files(name,PROD=False,DEV=False,CHECK=False):
         print("Oops, missing PROD or DEV, try again with one of those flags.")
         exit(0)
 
-    with open(f"{PATH_BASE}mods.json","r") as file:
+    with open(MODS,"r") as file:
         mods = json.load(file)
 
     if not os.path.exists(TEMP):
         os.mkdir(TEMP)
 
     for mod in mods:
-        filename = mod['filename']
-        file = f"{SRC}{filename}" #contains full path
-        search = mod['search']
-        update = mod['update']
         isProd = mod.get("PROD")
         isDev = mod.get("DEV")
-        if filename.find("/"):
-            filename = filename.split("/")[-1]
-        backup = f"{TEMP}{filename}"
-
         if PROD and not isProd:
             continue
         if DEV and not isDev:
             continue
-        if CHECK:
-            shutil.copyfile(src=file,dst=backup)
-            print(f"Original file {file} copied to {backup}")
+        
+        filename = mod['filename']
+        file = Win.join(SRC,filename) #contains full path
+        search = mod['search']
+        update = mod['update']
+        filename = Win.basename(file)
+        backup = Win.join(TEMP,filename)
+
+        shutil.copyfile(src=file,dst=backup)
+        print(f"Original file {file} copied to {backup}")
         contents = ''
         with open(file) as original:
             for line in original:
@@ -138,18 +148,17 @@ def check_files(name,PROD=False,DEV=False,CHECK=False):
                 recycling.append(json.load(trash))
     return recycling
 
+# Loop through recycling, copy files to original location,
+# remove files and temp directories, then run 'npm clean' when done
 def cleanup(name, recycling=False):
-    import os
-    import shutil
-    import json
-    import subprocess
 
-    PATH_BASE = f"{ROOT_BASE}{name}/"
-    TEMP = f"{PATH_BASE}temp/"
-    recycleBin = f"{PATH_BASE}recycling.json"
+    PATH_BASE = Win.join(ROOT_BASE,name)
+    TEMP = Win.join(PATH_BASE, "temp\\")
+    recycleBin = Win.join(PATH_BASE,"recycling.json")
 
+    # IF recycling wasn't passed in, look for it
     if not recycling:
-        if not os.path.exists(recycleBin):
+        if not Win.exists(recycleBin):
             print(f"Looks like nothing needs cleaned up here... Guess I'll be leaving then.")
             exit(0)
         else:
@@ -159,40 +168,41 @@ def cleanup(name, recycling=False):
                     recycling = trashTmp[0]
                 except IndexError:
                     recycling = trashTmp
-            
+
     for trash in recycling:
-        filename = trash.split("/")[-1]
-        tmpFile = f"{TEMP}{filename}"
-        print(f"Copying {tmpFile} to {trash}")
+        file = Win.split(trash)
+        tmpFile = Win.join(TEMP,file[1])
+        print(f"Copying temp file: {tmpFile} to origin: {trash}")
         try:
             shutil.copyfile(src=tmpFile,dst=trash)
             os.remove(tmpFile)
         except FileNotFoundError:
-            print(f"File {tmpFile} missing, proceeding with cleanup...")
+            print(f"File {tmpFile} missing, please investigate proceeding with cleanup...")
     try:
         os.rmdir(TEMP)
         os.remove(recycleBin)
     except FileNotFoundError:
         print("TMP directory or recycleBin are missing, which is ok.")
-
+    
+    os.chdir(PATH_BASE)
     subprocess.check_call('npm run clean', shell=True, cwd=PATH_BASE)    
     print("Cleanup complete")
 
+# Copy all files in project directory to cache location
+# Dump old data if present. Only the last push is cached
 def cache_files(name, PROD=False, API=False):
-    import os
-    import shutil
 
     if PROD:
-        prod_path = f"{PROD_BASE}{name}/"
-        pCache = f"{PROD_CACHE}{name}/"
-        if not os.path.exists(prod_path):
+        prod_path = Win.join(PROD_BASE,name)
+        pCache = Win.join(PROD_CACHE,name)
+        if not Win.exists(prod_path):
             print(f"Production path '{prod_path}' does not exist.")
             print(f"Creating directory '{prod_path}'...")
             os.makedirs(prod_path)
         # Copy files from prod to cache
         for item in os.listdir(prod_path):
-            src = os.path.join(prod_path, item)
-            dest = os.path.join(pCache, item)
+            src = Win.join(prod_path, item)
+            dest = Win.join(pCache, item)
             try:
                 shutil.move(src, dest)
             except Exception as e:
@@ -203,16 +213,16 @@ def cache_files(name, PROD=False, API=False):
         return
     
     if API:
-        api_path = API_BASE + name + "/"
-        aCache = API_CACHE + name + "/"
-        if not os.path.exists(api_path):
+        api_path = Win.join(API_BASE,name)
+        aCache = Win.join(API_CACHE,name)
+        if not Win.exists(api_path):
             print(f"API path '{api_path}' does not exist.")
             print(f"Creating directory '{api_path}'...")
             os.makedirs(api_path)
         # Copy files from api to cache
         for item in os.listdir(api_path):
-            src = os.path.join(api_path, item)
-            dest = os.path.join(aCache, item)
+            src = Win.join(api_path, item)
+            dest = Win.join(aCache, item)
             try:
                 shutil.move(src, dest)
             except Exception as e:
@@ -222,17 +232,17 @@ def cache_files(name, PROD=False, API=False):
         print(f"Production Project '{name}' cached successfully from production.")
         return
 
-    dev_path = DEV_BASE + name + "/"
-    wamp_path = WAMP_BASE + name + "/"
+    dev_path = Win.join(DEV_BASE,name)
+    wamp_path = Win.join(WAMP_BASE,name)
 
-    dCache = DEV_CACHE + name + "/"
-    wCache = WAMP_CACHE + name + "/"
+    dCache = Win.join(DEV_CACHE,name)
+    wCache = Win.join(WAMP_CACHE,name)
 
 
     # Copy files from dev to cache
     for item in os.listdir(dev_path):
-        src = os.path.join(dev_path, item)
-        dest = os.path.join(dCache, item)
+        src = Win.join(dev_path, item)
+        dest = Win.join(dCache, item)
         try:
             shutil.move(src, dest)
         except Exception as e:
@@ -242,8 +252,8 @@ def cache_files(name, PROD=False, API=False):
 
     # Copy files from wamp to cache
     for item in os.listdir(wamp_path):
-        src = os.path.join(wamp_path, item)
-        dest = os.path.join(wCache, item)
+        src = Win.join(wamp_path, item)
+        dest = Win.join(wCache, item)
         try:
             shutil.move(src, dest)
         except Exception as e:
@@ -253,24 +263,26 @@ def cache_files(name, PROD=False, API=False):
 
     print(f"Project '{name}' cached successfully.")
 
+# Copy all files from build directory to staging location
+# IF directory is found, it copies the entire tree down.
 def deploy_files(name, PROD=False, API=False):
-    import os
-    import shutil
+    
+    root = Win.join(ROOT_BASE,name)
 
     if PROD:
-        prod_path = f"{PROD_BASE}{name}/"
-        build_path = f"{ROOT_BASE}{name}/build/client/"
+        prod_path = Win.join(PROD_BASE,name)
+        build_path = Win.join(root,"\\build\\client\\")
 
-        if not os.path.exists(prod_path):
+        if not Win.exists(prod_path):
             print(f"Production path '{prod_path}' does not exist.")
             print(f"Creating directory '{prod_path}'...")
             os.makedirs(prod_path)
 
         # Copy files from build to prod
         for item in os.listdir(build_path):
-            src = os.path.join(build_path, item)
-            dest = os.path.join(prod_path, item)
-            if os.path.isdir(src):
+            src = Win.join(build_path, item)
+            dest = Win.join(prod_path, item)
+            if Win.isdir(src):
                 shutil.copytree(src, dest, dirs_exist_ok=True)
             else:
                 shutil.copy2(src, dest)
@@ -279,47 +291,47 @@ def deploy_files(name, PROD=False, API=False):
         return
     
     if API:
-        api_path = f"{API_BASE}{name}/"
-        build_path = f"{ROOT_BASE}{name}/src/api/v1/"
+        api_path = Win.join(API_BASE,name)
+        build_path = Win.join(root,"\\src\\api\\v1\\")
 
-        if not os.path.exists(api_path):
+        if not Win.exists(api_path):
             print(f"API path '{api_path}' does not exist.")
             print(f"Creating directory '{api_path}'...")
             os.makedirs(api_path)
 
         # Copy files from build to api
         for item in os.listdir(build_path):
-            src = os.path.join(build_path, item)
-            dest = os.path.join(api_path, item)
+            src = Win.join(build_path, item)
+            dest = Win.join(api_path, item)
 
-            if os.path.isdir(src):
+            if Win.isdir(src):
                 shutil.copytree(src, dest, dirs_exist_ok=True)
             else:
                 shutil.copy2(src, dest)
 
         print(f"API for Project '{name}' deployed successfully to production.")
         return
+    pathBit = "build\\client\\"
+    dev_path = Win.join(DEV_BASE,name)
+    wamp_path = Win.join(WAMP_BASE,name)
+    build_path = Win.join(root,pathBit)
 
-    dev_path = f"{DEV_BASE}{name}/"
-    wamp_path = f"{WAMP_BASE}{name}/"
-    build_path = f"{ROOT_BASE}{name}/build/client/"
-
-    if not os.path.exists(dev_path):
+    if not Win.exists(dev_path):
         print(f"Development path '{dev_path}' does not exist.")
         print(f"Creating directory '{dev_path}'...")
         os.makedirs(dev_path)
 
-    if not os.path.exists(wamp_path):
+    if not Win.exists(wamp_path):
         print(f"WAMP path '{wamp_path}' does not exist.")
         print(f"Creating directory '{wamp_path}'...")
         os.makedirs(wamp_path)
         
     # Copy files from build to dev
-    for item in os.listdir(build_path):
-        src = os.path.join(build_path, item)
-        destDev = os.path.join(dev_path, item)
-        destWamp = os.path.join(wamp_path, item)
-        if os.path.isdir(src):
+    for item in os.listdir(Win.abspath(build_path)):
+        src = Win.join(build_path, item)
+        destDev = Win.join(dev_path, item)
+        destWamp = Win.join(wamp_path, item)
+        if Win.isdir(src):
             shutil.copytree(src, destDev, dirs_exist_ok=True)
             shutil.copytree(src, destWamp, dirs_exist_ok=True)
         else:
@@ -329,30 +341,30 @@ def deploy_files(name, PROD=False, API=False):
     print(f"Project '{name}' staged successfully.")
 
 def ftp_prod(name, PROD=False, API=False, DEV=False):
-    import paramiko as Ftp
-    import os
+    
+    root = Win.join(ROOT_BASE,name)
 
-    KEY_PATH = "C:/Users/image/.ssh/home_ssh"
-    prod_path = PROD_BASE + name
-    api_path = API_BASE + name
-    dev_path = DEV_BASE + name
+    KEY_PATH = Win.realpath("C:\\Users\\image\\.ssh\\home_ssh")
+    prod_path = Win.join(PROD_BASE,name)
+    api_path = Win.join(API_BASE,name)
+    dev_path = Win.join(DEV_BASE,name)
 
     if PROD:
         path = prod_path
+        location = 'Production'
         if name == "DnD-app":
             REMOTE = DND_REMOTE
         else:
             REMOTE = PROD_REMOTE
-        location = 'Production'
     elif API:
         path = api_path
-        if name == "DnD-app":
-            REMOTE = DND_REMOTE + "api/v1/"
-        elif DEV:
-            REMOTE = DEV_REMOTE + "api/v1/"
-        else:
-            REMOTE = PROD_REMOTE + "api/v1/"
         location = 'API'
+        if name == "DnD-app":
+            REMOTE = Unx.join(DND_REMOTE,"api/v1/")
+        elif DEV:
+            REMOTE = Unx.join(DEV_REMOTE,"api/v1/")
+        else:
+            REMOTE = Unx.join(PROD_REMOTE,"api/v1/")
     elif DEV:
         path = dev_path
         REMOTE = DEV_REMOTE
@@ -372,30 +384,48 @@ def ftp_prod(name, PROD=False, API=False, DEV=False):
         look_for_keys=False
         )
     sftp = client.open_sftp()
+    def recurse_dir(dir, REMOTE, top):
+        for file in dir:
+            if Win.isdir(file):
+                recurse_dir(file)
+            else:
+                relPath = Win.relpath(file,top)
+                remotePath = Unx.join(REMOTE,relPath)
+                print(f"Local: {file} vs Remote: {remotePath}")
+                sftp.put( f"{file}", f"{remotePath}" )
+                print(f"{file} moved to {remotePath} subdirectory {relPath} successfully" )
     dir = os.scandir( path )
     for file in dir:
         if file.name in ["bucket.php","kothis.DB_make.sql","sylphaxiom.DB_make.sql"]:
             if file.name == "bucket.php":
                 continue
-            sftp.put(f"{path}/{file.name}", f"{API_SECURE}{file.name}" )
+            sftp.put(Win.join(path,file.name), Unx.join(API_SECURE,file.name))
             print( f"{file.name} moved to {location} successfully" )
             continue
         if file.is_file():
-            sftp.put( f"{path}/{file.name}", f"{REMOTE}{file.name}" )
+            sftp.put(file, Unx.join(REMOTE,file.name))
             print(f"{file.name} moved to {location} successfully" )
         if file.is_dir():
-            for root, dirs, files in os.walk(file):
+            for path, dirs, files in os.walk(file):
                 for dir in dirs:
                     try:
-                        sftp.listdir(f"{REMOTE}{file.name}")
+                        sftp.listdir(Unx.join(REMOTE,Win.relpath(dir,path)))
                     except:
-                        print(f"Remote directory {REMOTE}{file.name} is missing, please add directory to continue...")
+                        print(f"Remote directory {Unx.join(REMOTE,Win.relpath(dir,file))} is missing, please add directory to continue...")
                         input("Press Enter to continue...")
                 for subfile in files:
-                    print(f"{os.path.join(root,subfile)} vs {root}/{subfile}")
-                    print(f"{os.path.join(REMOTE,subfile)} vs {REMOTE}/{subfile}")
-                    sftp.put( f"{root}/{subfile}", f"{REMOTE}/{subfile}" )
-                    print(f"{root}/{subfile} moved to {REMOTE}/{subfile} subdirectory {root} successfully" )
+                    if Win.isdir(subfile):
+                        recurse_dir(subfile, REMOTE, path)
+                    else:
+                        pathlib.PureWindowsPath(root).anchor
+                        winPath = Win.join(path,subfile)
+                        bits = pathlib.PureWindowsPath(winPath).relative_to(root)
+                        winBit = Win.join(Win.basename(path),subfile)
+                        relPath = pathlib.PurePath.as_posix(pathlib.PureWindowsPath(winBit))
+                        remotePath = Unx.join(REMOTE,relPath)
+                        print(f"Local: {subfile} vs Remote: {remotePath}")
+                        sftp.put( winPath, remotePath )
+                        print(f"{subfile} moved to {remotePath} subdirectory {relPath} successfully" )
 
 if __name__ == "__main__":
     import time
@@ -403,7 +433,7 @@ if __name__ == "__main__":
     start = time.time()
     trash = ''
     [project_name, PROD, API, DEV, CHECK, SKIP] = parse_args()
-    if setup(project_name, API=API, CHECK=CHECK, SKIP=SKIP):
+    if setup(project_name, PROD=PROD):
         if (CHECK):
             check_files(project_name, PROD=PROD, DEV=DEV, CHECK=CHECK)
             print("I'm out, see you after the build is done.")
