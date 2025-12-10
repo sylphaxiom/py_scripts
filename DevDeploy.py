@@ -118,9 +118,9 @@ def check_files(name,PROD=False,DEV=False,CHECK=False):
         update = mod['update']
         filename = Win.basename(file)
         backup = Win.join(TEMP,filename)
-
-        shutil.copyfile(src=file,dst=backup)
-        print(f"Original file {file} copied to {backup}")
+        if CHECK:
+            shutil.copyfile(src=file,dst=backup)
+            print(f"Original file {file} copied to {backup}")
         contents = ''
         with open(file) as original:
             for line in original:
