@@ -98,7 +98,7 @@ def check_files(name,PROD=False,DEV=False,CHECK=False):
         print("Oops, missing PROD or DEV, try again with one of those flags.")
         exit(0)
 
-    if not os.path.exists(TEMP):
+    if not Win.exists(TEMP):
         os.mkdir(TEMP)
 
     if Win.exists(MODS):
