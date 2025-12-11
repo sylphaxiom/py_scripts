@@ -98,47 +98,46 @@ def check_files(name,PROD=False,DEV=False,CHECK=False):
         print("Oops, missing PROD or DEV, try again with one of those flags.")
         exit(0)
 
-    if Win.exists(MODS):
-        with open(MODS,"r") as file:
-            mods = json.load(file)
-    else:
-        print("Mods file is not present, continuing...")
-
     if not os.path.exists(TEMP):
         os.mkdir(TEMP)
 
-    for mod in mods:
-        isProd = mod.get("PROD")
-        isDev = mod.get("DEV")
-        if PROD and not isProd:
-            continue
-        if DEV and not isDev:
-            continue
-        
-        filename = mod['filename']
-        file = Win.join(SRC,filename) #contains full path
-        search = mod['search']
-        update = mod['update']
-        filename = Win.basename(file)
-        backup = Win.join(TEMP,filename)
-        if CHECK:
-            shutil.copyfile(src=file,dst=backup)
-            print(f"Original file {file} copied to {backup}")
-        contents = ''
-        with open(file) as original:
-            for line in original:
-                newLine = ''
-                if line.find(search) != -1:
-                    print(f"Found a change in {filename} for {search}")
-                    newLine = line.replace(search, update)
-                    print(f"Adding {filename} to cleanup")
-                    if file not in recycling:
-                        recycling.append(file)
-                else:
-                    newLine = line
-                contents += newLine
-        with open(file,"w") as original:
-            original.write(contents)    
+    if Win.exists(MODS):
+        with open(MODS,"r") as file:
+            mods = json.load(file)
+        for mod in mods:
+            isProd = mod.get("PROD")
+            isDev = mod.get("DEV")
+            if PROD and not isProd:
+                continue
+            if DEV and not isDev:
+                continue
+            
+            filename = mod['filename']
+            file = Win.join(SRC,filename) #contains full path
+            search = mod['search']
+            update = mod['update']
+            filename = Win.basename(file)
+            backup = Win.join(TEMP,filename)
+            if CHECK:
+                shutil.copyfile(src=file,dst=backup)
+                print(f"Original file {file} copied to {backup}")
+            contents = ''
+            with open(file) as original:
+                for line in original:
+                    newLine = ''
+                    if line.find(search) != -1:
+                        print(f"Found a change in {filename} for {search}")
+                        newLine = line.replace(search, update)
+                        print(f"Adding {filename} to cleanup")
+                        if file not in recycling:
+                            recycling.append(file)
+                    else:
+                        newLine = line
+                    contents += newLine
+            with open(file,"w") as original:
+                original.write(contents)
+    else:
+        print("Mods file is not present, continuing...") 
     try:
         with open(recycleBin, "x") as trash:
             json.dump(recycling, trash)
