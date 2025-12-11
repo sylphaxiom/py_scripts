@@ -98,8 +98,11 @@ def check_files(name,PROD=False,DEV=False,CHECK=False):
         print("Oops, missing PROD or DEV, try again with one of those flags.")
         exit(0)
 
-    with open(MODS,"r") as file:
-        mods = json.load(file)
+    if Win.exists(MODS):
+        with open(MODS,"r") as file:
+            mods = json.load(file)
+    else:
+        print("Mods file is not present, continuing...")
 
     if not os.path.exists(TEMP):
         os.mkdir(TEMP)
@@ -296,7 +299,7 @@ def deploy_files(name, PROD=False, API=False):
     
     if API:
         api_path = Win.join(API_BASE,name)
-        build_path = Win.join(root,"\\src\\api\\v1\\")
+        build_path = Win.join(root,"src\\api\\v1\\")
 
         if not Win.exists(api_path):
             print(f"API path '{api_path}' does not exist.")
@@ -403,7 +406,7 @@ def ftp_prod(name, PROD=False, API=False, DEV=False):
         if file.name in ["bucket.php","kothis.DB_make.sql","sylphaxiom.DB_make.sql"]:
             if file.name == "bucket.php":
                 continue
-            sftp.put(Win.join(path,file.name), Unx.join(API_SECURE,file.name))
+            sftp.put(Win.join(LOCAL_ROOT,file.name), Unx.join(API_SECURE,file.name))
             print( f"{file.name} moved to {location} successfully" )
             continue
         if file.is_file():
