@@ -57,7 +57,7 @@ def setup(name, PROD=False):
         if not Win.exists(base):
             print(f"Creating project directory '{base}'...")
             os.makedirs(base)
-    if PROD:
+    if PROD and not CHECK:
         os.chdir(root)
         print("running playwright tests...")
         subprocess.check_call('npx playwright install', shell=True)
@@ -275,7 +275,7 @@ def deploy_files(name, PROD=False, API=False):
 
     if PROD:
         prod_path = Win.join(PROD_BASE,name)
-        build_path = Win.join(root,"\\build\\client\\")
+        build_path = Win.join(root,"build\\client\\")
 
         if not Win.exists(prod_path):
             print(f"Production path '{prod_path}' does not exist.")
